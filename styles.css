@@ -1,0 +1,43 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { line-height: 1.5; -webkit-text-size-adjust: 100%; }
+body {
+  background: #fff;
+  color: #000;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+main { min-height: 100vh; max-width: 36rem; margin-inline: auto; padding: 2rem; }
+h1 { margin-bottom: 1rem; font-size: 1.5rem; line-height: 2rem; font-weight: 500; }
+.bio { margin-bottom: 1.5rem; line-height: 1.625; }
+.paragraph-break { display: block; height: .5rem; }
+a { color: inherit; text-decoration: underline; }
+a:hover { opacity: .6; }
+.blue-link { color: #2563eb; text-decoration: none; }
+nav { margin-bottom: 2rem; font-size: .875rem; line-height: 1.25rem; }
+nav a:not(:last-child) { margin-right: 1rem; }
+form { font-size: .875rem; line-height: 1.25rem; }
+form > :not(:last-child) { margin-bottom: .75rem; }
+form > .contact-intro { margin-bottom: .5rem; }
+.contact-intro a { overflow-wrap: anywhere; }
+input, textarea, button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+input, textarea { width: 100%; padding-block: .25rem; border-bottom: 1px solid #0003; outline: none; }
+input::placeholder, textarea::placeholder { color: #0008; opacity: 1; }
+input:focus, textarea:focus { border-bottom-color: #000; }
+textarea { resize: none; min-height: 4.5rem; field-sizing: content; }
+.form-actions { display: flex; align-items: center; gap: .5rem; }
+button { text-decoration: underline; cursor: pointer; }
+button:hover { opacity: .6; }
+button:disabled { opacity: .4; cursor: default; }
+a:focus-visible, button:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+#form-status { color: #666; }
+footer { margin-top: 2rem; font-size: .875rem; line-height: 1.25rem; color: #0006; }
+footer p + p { margin-top: .25rem; }
+
+.honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; }
