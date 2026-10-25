@@ -1,4 +1,4 @@
-import { createServer } from './app.mjs';
+import { createServer } from './contact-server.mjs';
 
 // Vercel imports this file, so startup must also run on import.
 if (!process.env.VERCEL) {

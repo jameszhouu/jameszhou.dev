@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from './app.mjs';
+import { createServer } from './contact-server.mjs';
 
 const valid = { name: 'Test Visitor', email: 'visitor@example.com', message: 'A test contact message.' };
 async function fixture(t, options = {}) {
@@ -60,6 +60,13 @@ test('limits attempts and blocks oversized bodies and private files', async t =>
 });
 
 test('Vercel-style import starts the entrypoint and serves all page assets', async t => {
+  // Vercel checks app/index before server. Shared modules must not shadow it.
+  const { existsSync } = await import('node:fs');
+  for (const stem of ['app', 'index']) {
+    for (const extension of ['js', 'cjs', 'mjs', 'ts', 'cts', 'mts']) {
+      assert.equal(existsSync(new URL(`./${stem}.${extension}`, import.meta.url)), false);
+    }
+  }
   const { spawn } = await import('node:child_process');
   const child = spawn(process.execPath, ['--input-type=module', '-e', "await import('./server.mjs')"], {
     cwd: new URL('./', import.meta.url),

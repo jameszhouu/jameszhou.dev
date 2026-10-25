@@ -22,7 +22,7 @@ The page's original contact count remains static and is not a delivery counter.
 
 ## Vercel
 
-`server.mjs` starts the HTTP listener when Vercel imports it; reusable application logic lives in `app.mjs`. `vercel.json` includes the HTML, CSS, and browser JavaScript in the function bundle. Configure the email variables and the exact production `SITE_ORIGIN` in Vercel's environment settings. Commit and push the changed files to trigger a new deployment; redeploying an older commit will not include the fix.
+`server.mjs` starts the HTTP listener when Vercel imports it; reusable application logic lives in `contact-server.mjs`. `vercel.json` includes the HTML, CSS, and browser JavaScript in the function bundle. Configure the email variables and the exact production `SITE_ORIGIN` in Vercel's environment settings. Commit and push the changed files to trigger a new deployment; redeploying an older commit will not include the fix.
 
 ## Tests
 
