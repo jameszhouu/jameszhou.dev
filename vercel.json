@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "server.mjs": {
+      "includeFiles": "{index.html,styles.css,script.js}",
+      "excludeFiles": "{.env,.env.*,*.test.mjs}",
+      "maxDuration": 30
+    }
+  }
+}

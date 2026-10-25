@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from './server.mjs';
+import { createServer } from './app.mjs';
 
 const valid = { name: 'Test Visitor', email: 'visitor@example.com', message: 'A test contact message.' };
 async function fixture(t, options = {}) {
@@ -57,4 +57,28 @@ test('limits attempts and blocks oversized bodies and private files', async t =>
     assert.equal((await fetch(base + path)).status, 404);
   }
   assert.equal((await fetch(base)).status, 200);
+});
+
+test('Vercel-style import starts the entrypoint and serves all page assets', async t => {
+  const { spawn } = await import('node:child_process');
+  const child = spawn(process.execPath, ['--input-type=module', '-e', "await import('./server.mjs')"], {
+    cwd: new URL('./', import.meta.url),
+    env: { ...process.env, VERCEL: '1', PORT: '0', HOST: '127.0.0.1' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(() => { child.kill(); });
+  const base = await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Entrypoint did not start')), 5000);
+    child.once('error', error => { clearTimeout(timeout); reject(error); });
+    child.once('exit', code => { clearTimeout(timeout); reject(new Error(`Exited: ${code}`)); });
+    child.stdout.on('data', chunk => {
+      const match = chunk.toString().match(/http:\/\/localhost:(\d+)/);
+      if (match) { clearTimeout(timeout); resolve(`http://127.0.0.1:${match[1]}`); }
+    });
+  });
+  for (const path of ['/', '/styles.css', '/script.js']) {
+    const response = await fetch(base + path);
+    assert.equal(response.status, 200, path);
+    assert.ok((await response.text()).length > 0);
+  }
 });

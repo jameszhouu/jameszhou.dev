@@ -20,6 +20,10 @@ Server-side validation, a honeypot, request-size limits, origin checks, provider
 
 The page's original contact count remains static and is not a delivery counter.
 
-## Checks
+## Vercel
+
+`server.mjs` starts the HTTP listener when Vercel imports it; reusable application logic lives in `app.mjs`. `vercel.json` includes the HTML, CSS, and browser JavaScript in the function bundle. Configure the email variables and the exact production `SITE_ORIGIN` in Vercel's environment settings. Commit and push the changed files to trigger a new deployment; redeploying an older commit will not include the fix.
+
+## Tests
 
 Run `npm test`. Integration tests use local HTTP requests and a mocked provider; they send no real emails. Live delivery requires configured credentials and a separate inbox check.
