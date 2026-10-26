@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from './contact-server.mjs';
+import { createServer, createHandler } from './contact-server.mjs';
 
 const valid = { name: 'Test Visitor', email: 'visitor@example.com', message: 'A test contact message.' };
 async function fixture(t, options = {}) {
@@ -59,16 +59,16 @@ test('limits attempts and blocks oversized bodies and private files', async t =>
   assert.equal((await fetch(base)).status, 200);
 });
 
-test('Vercel-style import starts the entrypoint and serves all page assets', async t => {
+test('local development server serves all page assets', async t => {
   // Vercel checks app/index before server. Shared modules must not shadow it.
   const { existsSync } = await import('node:fs');
-  for (const stem of ['app', 'index']) {
+  for (const stem of ['app', 'index', 'server', 'main']) {
     for (const extension of ['js', 'cjs', 'mjs', 'ts', 'cts', 'mts']) {
       assert.equal(existsSync(new URL(`./${stem}.${extension}`, import.meta.url)), false);
     }
   }
   const { spawn } = await import('node:child_process');
-  const child = spawn(process.execPath, ['--input-type=module', '-e', "await import('./server.mjs')"], {
+  const child = spawn(process.execPath, ['--input-type=module', '-e', "await import('./dev-server.mjs')"], {
     cwd: new URL('./', import.meta.url),
     env: { ...process.env, VERCEL: '1', PORT: '0', HOST: '127.0.0.1' },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -87,5 +87,37 @@ test('Vercel-style import starts the entrypoint and serves all page assets', asy
     const response = await fetch(base + path);
     assert.equal(response.status, 200, path);
     assert.ok((await response.text()).length > 0);
+  }
+});
+
+test('Vercel API exports a handler without starting a listener', async () => {
+  const { default: handler } = await import('./api/contact.mjs');
+  assert.equal(typeof handler, 'function');
+});
+
+test('accepts Vercel pre-parsed bodies and enforces their size limit', async () => {
+  let sent = false;
+  const handler = createHandler({ env, send: async () => {
+    sent = true;
+    return Response.json({ id: 'test-id' });
+  } });
+  const req = { url: '/api/contact', method: 'POST', headers: { 'content-type': 'application/json' }, socket: { remoteAddress: 'test' }, body: valid };
+  const res = { writeHead(code) { this.code = code; }, end(body) { this.body = JSON.parse(body); } };
+  await handler(req, res);
+  assert.equal(res.code, 200);
+  assert.equal(sent, true);
+  sent = false;
+  req.body = { ...valid, message: 'x'.repeat(25000) };
+  await handler(req, res);
+  assert.equal(res.code, 413);
+  assert.equal(sent, false);
+});
+
+test('static build contains exactly the three public files', async () => {
+  const { readdir, readFile } = await import('node:fs/promises');
+  await import('./build.mjs');
+  assert.deepEqual((await readdir(new URL('./public/', import.meta.url))).sort(), ['index.html', 'script.js', 'styles.css']);
+  for (const file of ['index.html', 'script.js', 'styles.css']) {
+    assert.equal(await readFile(new URL(`./public/${file}`, import.meta.url), 'utf8'), await readFile(new URL(file, import.meta.url), 'utf8'));
   }
 });

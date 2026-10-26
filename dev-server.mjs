@@ -1,6 +1,6 @@
 import { createServer } from './contact-server.mjs';
 
-// Vercel imports this file, so startup must also run on import.
+// Local development server. Vercel uses api/contact.mjs.
 if (!process.env.VERCEL) {
   try { process.loadEnvFile(new URL('.env', import.meta.url)); } catch (error) {
     if (error.code !== 'ENOENT') throw error;

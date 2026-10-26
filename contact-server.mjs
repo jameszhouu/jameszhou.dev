@@ -10,11 +10,11 @@ const files = new Map([
 ]);
 const emailPattern = /^[^\s@<>\r\n]+@[^\s@<>\r\n]+\.[^\s@<>\r\n]+$/;
 
-export function createServer({ env = process.env, send = fetch } = {}) {
+export function createHandler({ env = process.env, send = fetch } = {}) {
   const attempts = new Map();
   let globalAttempts = [];
   const windowMs = 15 * 60 * 1000;
-  return http.createServer(async (req, res) => {
+  return async (req, res) => {
     const json = (code, body) => {
       res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       res.end(JSON.stringify(body));
@@ -52,15 +52,23 @@ export function createServer({ env = process.env, send = fetch } = {}) {
       }
       attempts.set(ip, [...times, now]);
       globalAttempts.push(now);
-      let raw = '';
-      let size = 0;
-      for await (const chunk of req) {
-        size += chunk.length;
-        if (size > 24_000) return json(413, { error: 'Message is too large.' });
-        raw += chunk;
-      }
       let data;
-      try { data = JSON.parse(raw); } catch { return json(400, { error: 'Invalid JSON.' }); }
+      // Vercel may parse JSON before invoking a Node function.
+      if (req.body !== undefined) {
+        const raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        if (Buffer.byteLength(raw) > 24_000) return json(413, { error: 'Message is too large.' });
+        try { data = JSON.parse(raw); } catch { return json(400, { error: 'Invalid JSON.' }); }
+      } else {
+        const chunks = [];
+        let size = 0;
+        for await (const chunk of req) {
+          size += chunk.length;
+          if (size > 24_000) return json(413, { error: 'Message is too large.' });
+          chunks.push(Buffer.from(chunk));
+        }
+        try { data = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+        catch { return json(400, { error: 'Invalid JSON.' }); }
+      }
       if (!data || typeof data !== 'object' || Array.isArray(data)) return json(400, { error: 'Invalid message.' });
       if (data.website) return json(400, { error: 'Unable to submit this message.' });
       const { name, email, message } = data;
@@ -92,6 +100,10 @@ export function createServer({ env = process.env, send = fetch } = {}) {
       if (!res.headersSent) json(502, { error: 'Unable to confirm sending. Please try later or use the email link.' });
       else res.end();
     }
-  });
+  };
+}
+
+export function createServer(options) {
+  return http.createServer(createHandler(options));
 }
 

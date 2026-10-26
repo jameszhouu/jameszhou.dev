@@ -22,7 +22,9 @@ The page's original contact count remains static and is not a delivery counter.
 
 ## Vercel
 
-`server.mjs` starts the HTTP listener when Vercel imports it; reusable application logic lives in `contact-server.mjs`. `vercel.json` includes the HTML, CSS, and browser JavaScript in the function bundle. Configure the email variables and the exact production `SITE_ORIGIN` in Vercel's environment settings. Commit and push the changed files to trigger a new deployment; redeploying an older commit will not include the fix.
+Vercel serves the built `public/` directory as static files, independently of the email function. `npm run build` copies only the HTML, CSS, and browser JavaScript. `/api/contact` uses `api/contact.mjs`, which exports a request handler without opening a port. `dev-server.mjs` is only for local use.
+
+`vercel.json` selects the Other framework preset, the build command, and the output directory. Configure email variables and the exact production `SITE_ORIGIN` in Vercel. Push all changes, including removal of old root `server.mjs` and `app.mjs` entrypoints. Deploy the new commit; redeploying an older commit does not include the fix.
 
 ## Tests
 

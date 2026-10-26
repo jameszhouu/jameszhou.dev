@@ -1,10 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
   "functions": {
-    "server.mjs": {
-      "includeFiles": "{index.html,styles.css,script.js}",
-      "excludeFiles": "{.env,.env.*,*.test.mjs}",
-      "maxDuration": 30
+    "api/contact.mjs": {
+      "maxDuration": 30,
+      "excludeFiles": "{.env,.env.*,*.test.mjs}"
     }
   }
 }
