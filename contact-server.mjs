@@ -11,6 +11,21 @@ const files = new Map([
   ['/apple-touch-icon.png', ['apple-touch-icon.png', 'image/png']],
 ]);
 const emailPattern = /^[^\s@<>\r\n]+@[^\s@<>\r\n]+\.[^\s@<>\r\n]+$/;
+const contactFrom = 'James Zhou <website@jameszhou.dev>';
+const contactTo = 'jameszhouu@u.northwestern.edu';
+
+function allowsOrigin(origin, req, env) {
+  try {
+    const parsed = new URL(origin);
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) return false;
+    // Hosted requests may reach Node over HTTP after TLS termination.
+    // Match the actual Host, never a client-supplied forwarding header.
+    if (parsed.host !== req.headers.host) return false;
+    return parsed.protocol === 'https:' || (!env.VERCEL && !req.socket.encrypted);
+  } catch {
+    return false;
+  }
+}
 
 export function createHandler({ env = process.env, send = fetch } = {}) {
   const attempts = new Map();
@@ -31,9 +46,8 @@ export function createHandler({ env = process.env, send = fetch } = {}) {
         return res.end(req.method === 'HEAD' ? undefined : content);
       }
       if (req.method !== 'POST') return json(405, { error: 'Use POST.' });
-      if (req.headers.origin) {
-        const allowed = env.SITE_ORIGIN || `http://${req.headers.host}`;
-        if (req.headers.origin !== allowed) return json(403, { error: 'Origin not allowed.' });
+      if (req.headers.origin && !allowsOrigin(req.headers.origin, req, env)) {
+        return json(403, { error: 'Origin not allowed.' });
       }
       if (req.headers['content-type']?.split(';')[0] !== 'application/json') {
         return json(415, { error: 'Send JSON.' });
@@ -80,15 +94,15 @@ export function createHandler({ env = process.env, send = fetch } = {}) {
           message.trim().length < 10 || message.length > 5000) {
         return json(400, { error: 'Enter a name, valid email, and message of 10–5000 characters.' });
       }
-      if (!env.RESEND_API_KEY || !env.CONTACT_FROM || !emailPattern.test(env.CONTACT_TO || '')) {
+      if (!env.RESEND_API_KEY) {
         return json(503, { error: 'Email delivery is not configured yet. Please use the email link.' });
       }
       const response = await send('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: env.CONTACT_FROM,
-          to: [env.CONTACT_TO],
+          from: contactFrom,
+          to: [contactTo],
           reply_to: email.trim(),
           subject: `Website message from ${name.trim()}`,
           text: `${message.trim()}\n\nFrom: ${name.trim()}\nEmail: ${email.trim()}`,
@@ -108,4 +122,3 @@ export function createHandler({ env = process.env, send = fetch } = {}) {
 export function createServer(options) {
   return http.createServer(createHandler(options));
 }
-

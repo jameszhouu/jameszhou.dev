@@ -15,8 +15,8 @@ async function fixture(t, options = {}) {
     }),
   };
 }
-const env = { RESEND_API_KEY: 'test-key', CONTACT_FROM: 'Site <site@example.com>', CONTACT_TO: 'owner@example.com' };
-test('sends only to configured recipient and sets visitor reply-to', async t => {
+const env = { RESEND_API_KEY: 'test-key' };
+test('sends only to James with just an API key and sets visitor reply-to', async t => {
   let request;
   const { post } = await fixture(t, { env, send: async (url, options) => {
     request = { url, ...options };
@@ -26,9 +26,9 @@ test('sends only to configured recipient and sets visitor reply-to', async t => 
   assert.equal(response.status, 200);
   assert.equal((await response.json()).ok, true);
   const payload = JSON.parse(request.body);
-  assert.deepEqual(payload.to, ['owner@example.com']);
+  assert.deepEqual(payload.to, ['jameszhouu@u.northwestern.edu']);
   assert.equal(payload.reply_to, valid.email);
-  assert.equal(payload.from, env.CONTACT_FROM);
+  assert.equal(payload.from, 'James Zhou <website@jameszhou.dev>');
   assert.ok(payload.text.includes(valid.message));
 });
 test('rejects bad input, honeypot and cross-origin requests without sending', async t => {
@@ -37,6 +37,52 @@ test('rejects bad input, honeypot and cross-origin requests without sending', as
     assert.equal((await post(body)).status, 400);
   }
   assert.equal((await post(valid, { Origin: 'https://evil.example' })).status, 403);
+});
+
+test('origin validation supports HTTPS hosting and preserves origin restrictions', async t => {
+  const cases = [
+    ['local HTTP', {}, 'http://localhost:3000', 'localhost:3000', 200],
+    ['production HTTPS', { VERCEL: '1' }, 'https://jameszhou.dev', 'jameszhou.dev', 200],
+    ['preview HTTPS', { VERCEL: '1' }, 'https://site-preview.vercel.app', 'site-preview.vercel.app', 200],
+    ['proxied HTTPS', {}, 'https://jameszhou.dev', 'jameszhou.dev', 200],
+    ['hosted HTTP', { VERCEL: '1' }, 'http://jameszhou.dev', 'jameszhou.dev', 403],
+    ['foreign origin', {}, 'https://evil.example', 'jameszhou.dev', 403],
+    ['different port', {}, 'https://jameszhou.dev:444', 'jameszhou.dev', 403],
+    ['opaque origin', {}, 'null', 'jameszhou.dev', 403],
+    ['malformed origin', {}, 'https://jameszhou.dev/path', 'jameszhou.dev', 403],
+    ['stale origin setting is ignored', { SITE_ORIGIN: 'http://localhost:3000' }, 'https://jameszhou.dev', 'jameszhou.dev', 200],
+  ];
+  for (const [name, config, origin, host, status] of cases) {
+    await t.test(name, async () => {
+      let sent = false;
+      const handler = createHandler({ env: { ...env, ...config }, send: async () => {
+        sent = true;
+        return Response.json({ id: 'test-id' });
+      } });
+      const req = {
+        url: '/api/contact', method: 'POST', body: valid,
+        headers: { 'content-type': 'application/json', origin, host, 'x-forwarded-host': 'evil.example' },
+        socket: { remoteAddress: 'test' },
+      };
+      const res = { writeHead(code) { this.code = code; }, end() {} };
+      await handler(req, res);
+      assert.equal(res.code, status);
+      assert.equal(sent, status === 200);
+    });
+  }
+});
+test('legacy email settings cannot override the fixed sender or recipient', async t => {
+  let payload;
+  const { post } = await fixture(t, {
+    env: { ...env, CONTACT_FROM: 'old@example.com', CONTACT_TO: 'wrong@example.com' },
+    send: async (url, options) => {
+      payload = JSON.parse(options.body);
+      return Response.json({ id: 'test-id' });
+    },
+  });
+  assert.equal((await post()).status, 200);
+  assert.deepEqual(payload.to, ['jameszhouu@u.northwestern.edu']);
+  assert.equal(payload.from, 'James Zhou <website@jameszhou.dev>');
 });
 test('missing configuration and provider failures never report success', async t => {
   const unconfigured = await fixture(t, { env: {} });
