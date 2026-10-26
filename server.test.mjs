@@ -113,11 +113,11 @@ test('accepts Vercel pre-parsed bodies and enforces their size limit', async () 
   assert.equal(sent, false);
 });
 
-test('static build contains exactly the three public files', async () => {
+test('static build contains exactly the public page assets', async () => {
   const { readdir, readFile } = await import('node:fs/promises');
   await import('./build.mjs');
-  assert.deepEqual((await readdir(new URL('./public/', import.meta.url))).sort(), ['index.html', 'script.js', 'styles.css']);
-  for (const file of ['index.html', 'script.js', 'styles.css']) {
-    assert.equal(await readFile(new URL(`./public/${file}`, import.meta.url), 'utf8'), await readFile(new URL(file, import.meta.url), 'utf8'));
+  assert.deepEqual((await readdir(new URL('./public/', import.meta.url))).sort(), ['apple-touch-icon.png', 'favicon.png', 'index.html', 'script.js', 'styles.css']);
+  for (const file of ['apple-touch-icon.png', 'favicon.png', 'index.html', 'script.js', 'styles.css']) {
+    assert.deepEqual(await readFile(new URL(`./public/${file}`, import.meta.url)), await readFile(new URL(file, import.meta.url)));
   }
 });
